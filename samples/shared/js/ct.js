@@ -21957,13 +21957,13 @@ class MasksManager {
             this.tensor = new ort_min.Tensor("float32", npArray.data, npArray.shape);
         });
     }
-    runOnnx() {
+    runOnnx(click) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.onnxSession || !this.tensor) {
                 return;
             }
             const feeds = modelData({
-                clicks: [],
+                clicks: [click],
                 tensor: this.tensor,
                 modelScale: {
                     height: this.sourceHeight,

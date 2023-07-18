@@ -18,6 +18,7 @@ import { handleImageScale } from "../../SegmentAnything/scaleHelper";
 import { onnxMaskToImage } from "../../SegmentAnything/maskUtils";
 import { Tensor, InferenceSession } from "onnxruntime-web";
 import NPYLoader from "npyjs";
+import { modelInputProps } from "../../SegmentAnything/Interfaces";
 
 export type LineJoin = "round" | "bevel" | "miter";
 export type LineCap = "butt" | "round" | "square";
@@ -125,12 +126,12 @@ export class MasksManager {
         this.tensor = new Tensor("float32", npArray.data, npArray.shape);
     }
 
-    public async runOnnx(): Promise<void> {
+    public async runOnnx(click: modelInputProps): Promise<void> {
         if (!this.onnxSession || !this.tensor) {
             return;
         }
         const feeds = modelData({
-            clicks: [],
+            clicks: [click],
             tensor: this.tensor,
             modelScale: {
                 height: this.sourceHeight,

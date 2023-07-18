@@ -5,7 +5,7 @@
   "main": "./dist/ct.js",
   "module": "./src/ts/ct.ts",
   "scripts": {
-    "plato-report": "./node_modules/.bin/es6-plato -r -d ./plato-report lib",
+    "prepare": "node post-install.js",
     "start": "webpack-dev-server",
     "build": "npx webpack && copyfiles -f dist/ct.js samples/shared/js/",
     "test": "jest",

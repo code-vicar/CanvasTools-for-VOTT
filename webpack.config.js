@@ -1,9 +1,5 @@
-const path = require('path');
-const webpack = require('webpack');
-const yargs = require('yargs');
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
+const path = require("path");
 
-var libraryName = "CanvasTools";
 var libraryEntry = "./src/canvastools/ts/ct.ts"
 var libraryFileName = "ct";
 
@@ -55,19 +51,19 @@ module.exports = function (env) {
             filename: settings.filename,
             path: settings.path,
             libraryTarget: 'umd',
-            library: '',
-            umdNamedDefine: true
+            globalObject: 'this'
         },
-
         mode: settings.mode,
         devtool: settings.devtool,
         optimization: {
             minimize: settings.minimize
         },
         devServer: {
-            contentBase: path.join(__dirname, 'samples'),
+            static: {
+                directory: path.join(__dirname, 'samples')
+            },
             port: 9000,
-            publicPath: "/shared/js/"
+            compress: true,
         },
         module: {
             rules: [
@@ -83,10 +79,6 @@ module.exports = function (env) {
                     ],
                     exclude: /node_modules/                    
                 },
-                /* {
-                    test: require.resolve('snapsvg'),
-                    loader: 'imports-loader?this=>window,fix=>module.exports=0'
-                }, */
                 {
                     test: /\.css$/,
                     use: [
@@ -97,8 +89,7 @@ module.exports = function (env) {
             ]
         },
         resolve: {
-            extensions: ['.ts', '.js'],
-            plugins: [new TsconfigPathsPlugin({ configFile: "./tsconfig.json" })]
+            extensions: ['.ts', '.js']
         }
     };
     return config;

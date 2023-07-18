@@ -13,6 +13,11 @@ import {
     MaskSelectorMode,
 } from "../../Interface/IMask";
 import { SelectionMode } from "../../Interface/ISelectorSettings";
+import { modelData } from "../../SegmentAnything/onnxModelAPI";
+import { handleImageScale } from "../../SegmentAnything/scaleHelper";
+import { onnxMaskToImage } from "../../SegmentAnything/maskUtils";
+import { Tensor, InferenceSession } from "onnxruntime-web";
+import NPYLoader from "npyjs";
 
 export type LineJoin = "round" | "bevel" | "miter";
 export type LineCap = "butt" | "round" | "square";
@@ -78,6 +83,12 @@ export class MasksManager {
      */
     private tagsList: TagsDescriptor[];
 
+    private onnxSession?: InferenceSession;
+
+    private tensor?: Tensor;
+
+    private samScale?: number;
+
     constructor(editorDiv: HTMLDivElement, konvaDivHostElement: HTMLDivElement, callbacks: IMaskManagerCallbacks) {
         this.callbacks = callbacks;
         this.tagsList = [];
@@ -100,6 +111,53 @@ export class MasksManager {
     public setSourceDimensions(width: number, height: number): void {
         this.sourceWidth = width;
         this.sourceHeight = height;
+        const { samScale } = handleImageScale({ naturalHeight: height, naturalWidth: width });
+        this.samScale = samScale;
+    }
+
+    public async loadOnnxModel(modelUrl: string): Promise<void> {
+        this.onnxSession = await InferenceSession.create(modelUrl);
+    }
+
+    public async loadSourceEmbeddings(tensorFileUrl: string): Promise<void> {
+        const npyLoader = new NPYLoader();
+        const npArray = await npyLoader.load(tensorFileUrl);
+        this.tensor = new Tensor("float32", npArray.data, npArray.shape);
+    }
+
+    public async runOnnx(): Promise<void> {
+        if (!this.onnxSession || !this.tensor) {
+            return;
+        }
+        const feeds = modelData({
+            clicks: [],
+            tensor: this.tensor,
+            modelScale: {
+                height: this.sourceHeight,
+                width: this.sourceWidth,
+                samScale: this.samScale,
+            },
+        });
+        if (!feeds) {
+            return;
+        }
+        // Run the SAM ONNX model with the feeds returned from modelData()
+        const results = await this.onnxSession.run(feeds);
+        const output = results[this.onnxSession.outputNames[0]];
+        // The predicted mask returned from the ONNX model is an array which is 
+        // rendered as an HTML image using onnxMaskToImage() from maskUtils.tsx.
+        this.initializeImageMask();
+        const SAMMaskImage = onnxMaskToImage(output.data, output.dims[2], output.dims[3]);
+        const currentDimensionsEditor = this.getCurrentDimension();
+        SAMMaskImage.onload = (_e) => {
+            const newKonvaImg = new Konva.Image({
+                image: SAMMaskImage,
+                height: currentDimensionsEditor.height,
+                width: currentDimensionsEditor.width,
+                perfectDrawEnabled: true,
+            });
+            this.canvasLayer.add(newKonvaImg);
+        };
     }
 
     /**
@@ -155,7 +213,7 @@ export class MasksManager {
                 const oldWidth = this.currentEditorDivWidth ?? this.konvaStage.width();
                 const existingScale = this.konvaStage.scaleX();
                 const toBeScale = width / oldWidth;
-                const expectedScale = existingScale *  toBeScale;
+                const expectedScale = existingScale * toBeScale;
                 this.konvaStage.scale({
                     x: expectedScale,
                     y: expectedScale,
@@ -194,7 +252,7 @@ export class MasksManager {
         const tagsVisibility = this.tagsList.map((tag) => {
             return {
                 isVisible: true,
-                name: tag.primary.name
+                name: tag.primary.name,
             };
         });
         this.updateAllMaskVisibility(tagsVisibility);
@@ -233,11 +291,11 @@ export class MasksManager {
             const tagId = tags.primary.sequenceNumber;
             let tagExists = false;
             for (let i = 0; i <= data.data.length - 1; i = i + 4) {
-                    const ri = imgData[i];
-                    const gi = imgData[i + 1];
-                    const bi = imgData[i + 2];
-                    const t = 10;
-                if ((ri >= r-t && ri <= r+t) && (gi >= g-t && gi <= g+t) && (bi >= b-t && bi <= b+t)) {
+                const ri = imgData[i];
+                const gi = imgData[i + 1];
+                const bi = imgData[i + 2];
+                const t = 10;
+                if (ri >= r - t && ri <= r + t && gi >= g - t && gi <= g + t && bi >= b - t && bi <= b + t) {
                     newData[i / 4] = tagId;
                     tagExists = true;
                 }
@@ -342,20 +400,20 @@ export class MasksManager {
     private initializeImageMask(): void {
         if (!this.maskImage) {
             this.maskImage = new Image();
-        } 
+        }
     }
 
     private updateMaskVisibilityInternal(isVisible: boolean, tagName: string): void {
-        const shapes = this.canvasLayer.getChildren(node => {
+        const shapes = this.canvasLayer.getChildren((node) => {
             return node.getAttr("name") === tagName;
         });
-        shapes.forEach(shape => {
+        shapes.forEach((shape) => {
             shape.visible(isVisible);
         });
     }
 
-    private updateAllMaskVisibility(tags: Array<{isVisible: boolean, name: string}>): void {
-        tags.forEach(tag => this.updateMaskVisibilityInternal(tag.isVisible, tag.name));
+    private updateAllMaskVisibility(tags: Array<{ isVisible: boolean; name: string }>): void {
+        tags.forEach((tag) => this.updateMaskVisibilityInternal(tag.isVisible, tag.name));
     }
 
     private convertRegionsToMask(layer: Konva.Layer) {
@@ -502,7 +560,7 @@ export class MasksManager {
                     image: this.maskImage,
                     height: currentDimensionsEditor.height,
                     width: currentDimensionsEditor.width,
-                    perfectDrawEnabled: true
+                    perfectDrawEnabled: true,
                 });
                 layer.add(newKonvaImg);
             };

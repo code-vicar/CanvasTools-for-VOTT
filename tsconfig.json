@@ -1,7 +1,6 @@
 {
     "compilerOptions": {
-        "target": "es2017",
-        "module": "commonjs",
+        "target": "ES6",
         "declaration": true,
         "removeComments": true,
         "preserveConstEnums": true,
@@ -11,11 +10,6 @@
                 
         "moduleResolution": "node",
         "baseUrl": "src",
-        "lib": [  
-            "es2017",
-            "dom",
-            "esnext.asynciterable"
-        ],
         "paths": {
         },
         "outDir": "dist"

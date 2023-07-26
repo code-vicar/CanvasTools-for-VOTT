@@ -11,16 +11,11 @@ body {
     display: grid;
     width: calc(100% - 40px);
     height: 600px;
-    grid-template-columns: 64px calc(100% - 64px);
+    grid-template-columns: 64px 1fr;
     grid-template-rows: 100%;
 
     margin:0;
     background: rgb(64,64,64);
-}
-
-.CanvasToolsContainer.changeSize {
-    height: 500px;
-    width: 500px;
 }
 
 #toolbarDiv {
@@ -50,4 +45,23 @@ body {
 
 #editorDiv svg {
     box-shadow: 0px 0px 0.25px #999, 0px 0px 10px rgb(0,0,0);
+}
+
+#tags {
+    text-align: center;
+}
+
+.tagButton {
+    color: white;
+    border: 2px solid transparent;
+    border-radius: 1em;
+    height: 2em;
+    margin: 0.5em;
+    outline-color: transparent;
+    box-shadow: 0 0 5px black;
+}
+
+.tagButton.active {
+    border: 2px solid black;
+    
 }

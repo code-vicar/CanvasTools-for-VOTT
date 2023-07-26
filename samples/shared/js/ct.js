@@ -21755,15 +21755,16 @@ const handleImageScale = ({ naturalWidth, naturalHeight }) => {
 
 
 ;// CONCATENATED MODULE: ./src/canvastools/ts/CanvasTools/SegmentAnything/maskUtils.ts
-function arrayToImageData(input, width, height) {
-    const [r, g, b, a] = [0, 114, 189, 255];
+function arrayToImageData(input, width, height, color = [0, 114, 189]) {
+    const [r, g, b] = color;
+    const alpha = 255;
     const arr = new Uint8ClampedArray(4 * width * height).fill(0);
     for (let i = 0; i < input.length; i++) {
         if (input[i] > 0.0) {
             arr[4 * i + 0] = r;
             arr[4 * i + 1] = g;
             arr[4 * i + 2] = b;
-            arr[4 * i + 3] = a;
+            arr[4 * i + 3] = alpha;
         }
     }
     return new ImageData(arr, height, width);
@@ -21782,8 +21783,8 @@ function imageDataToCanvas(imageData) {
     ctx === null || ctx === void 0 ? void 0 : ctx.putImageData(imageData, 0, 0);
     return canvas;
 }
-function onnxMaskToImage(input, width, height) {
-    return imageDataToImage(arrayToImageData(input, width, height));
+function onnxMaskToImage(input, width, height, color) {
+    return imageDataToImage(arrayToImageData(input, width, height, color));
 }
 
 // EXTERNAL MODULE: ./node_modules/cross-fetch/dist/browser-ponyfill.js
@@ -21957,7 +21958,7 @@ class MasksManager {
             this.tensor = new ort_min.Tensor("float32", npArray.data, npArray.shape);
         });
     }
-    runOnnx(click) {
+    runOnnx(click, tag) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.onnxSession || !this.tensor) {
                 return;
@@ -21977,7 +21978,8 @@ class MasksManager {
             const results = yield this.onnxSession.run(feeds);
             const output = results[this.onnxSession.outputNames[0]];
             this.initializeImageMask();
-            const SAMMaskImage = onnxMaskToImage(output.data, output.dims[2], output.dims[3]);
+            const [r, g, b] = tag.primary.srgbColor.to255();
+            const SAMMaskImage = onnxMaskToImage(output.data, output.dims[2], output.dims[3], [r, g, b]);
             const currentDimensionsEditor = this.getCurrentDimension();
             SAMMaskImage.onload = (_e) => {
                 const newKonvaImg = new lib.Image({

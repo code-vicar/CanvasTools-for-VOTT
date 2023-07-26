@@ -15,7 +15,7 @@
             <div id="editorDiv"></div>
         </div>
     </div>
-
+    <div id="tagsDiv"></div>
     <div id="controls">
         <div>
             <label for="imageSelect" >Choose image: </label>
@@ -113,15 +113,18 @@
                 title: "Snow"
             }, 
         ];
-    var editor;
-    // store
-    var tagColor = "#c48de7";
 
-    var colorObject = {
-        "#c48de7": "Awesome",
-        "#3b1fff": "Amazing",
-        "#f94c48": "Brilliant"
-    };
+    const tagNames = ["Awesome", "Amazing", "Brilliante", "Incredible", "Marvelous",
+                "Unbelievable", "Wonderful", "Shocking", "Surprising", "Startling"];
+    
+    // will be populated on load
+    var tags = [];
+    
+    // Current active tag
+    var activeTag;
+
+    var editor;
+    
     var maskSize = 20;
 
     document.addEventListener("DOMContentLoaded", (e) => {
@@ -141,20 +144,47 @@
         editor.addToolbar(toolbarContainer, CanvasTools.Editor.FullToolbarSet, "./../shared/media/icons/");
         editor.enablePathRegions(true);
 
+        // Define palette settings
+        const paletteSettings = {
+            lightness: 0.6,
+            lightnessVariation: 0.1,
+            minGrayness: 0.2,
+            maxGrayness: 0.6,
+            granularity: 100,
+            abRange: 1.3,
+        };
+
+        // Create new pallete
+        const palette = new CanvasTools.Core.Colors.Palette(paletteSettings);
+
+        // Define the number of swatches
+        const swatchesCount = tagNames.length;
+
+        // Request swatches from the pallete
+        palette.swatches(swatchesCount).then((gamut) => {
+            // Create collection of tags using names and generated colors
+            tags = gamut.map((color, index) => {
+                return new CanvasTools.Core.Tag(tagNames[index], color);
+            });
+
+            // Populate tags buttons to the UI
+            const tagsContainer = document.getElementById("tagsDiv");
+            populateTags(tagsContainer, tags);
+        });
+
         let incrementalRegionID = 100;
 
         // Add new region to the editor when new region is created
         editor.onSelectionEnd = (regionData) => {
+            let tag = getTagsDescriptor();
             if (this.samStarted) {
-                editor.MM.runOnnx({ x: regionData.x, y: regionData.y });
+                editor.MM.runOnnx({ x: regionData.x, y: regionData.y }, tag);
                 this.samStarted = false;
                 return;
             }
             let id = (incrementalRegionID++).toString();
 
-            // Generate random tag
-            let tags = getTagsDescriptor();            
-            editor.addRegion(id, regionData, tags);
+            editor.addRegion(id, regionData, tag);
 
             console.log(`Created ${id}: {${regionData.x}, ${regionData.y}} x {${regionData.width}, ${regionData.height}}`);
         };     
@@ -194,25 +224,6 @@
         editor.ZM.setMaxZoomScale(10);
         editor.ZM.resetZoomOnContentLoad = true;
 
-        // Collection of primary tags. Use Color class to define color.
-        const Color = CanvasTools.Core.Colors.Color;
-        const primaryTags = [
-            new CanvasTools.Core.Tag("Awesome", new Color("#c48de7"), "", 1),
-            new CanvasTools.Core.Tag("Amazing", new Color("#3b1fff"), "", 2),
-            new CanvasTools.Core.Tag("Brilliant", new Color("#f94c48"), "", 3),
-        ];
-
-
-        // Randomly generate tags descriptor object
-        function getTagsDescriptor() {
-            const currentTag = primaryTags.find(function (tag) {
-                return tag.color == tagColor;
-            });
-            return new CanvasTools.Core.TagsDescriptor([currentTag]);
-        };
-
-
-
         let imageIndex = 0;
         // Init images selector
         initImageSelect(images, (index, imageMeta) => {
@@ -245,10 +256,6 @@
 
         initBrushSizeSelect((value) => {
             editor.MM.setBrushSize({brush: parseInt(value), erase: parseInt(value)});
-        });
-
-        initTagColorSelect((value) => {
-            tagColor = value;
         });
 
         var getRegionButton = document.getElementById("getRegion");
@@ -297,9 +304,10 @@
         var toggleVisibility = true;
         var toggleVisibilityButton = document.getElementById("toggleVisibility");
         toggleVisibilityButton.addEventListener("click", (e) => {
-            var tagName = "Awesome";
+            // var tagName = "Awesome";
+            var tag = getActiveTag();
             Object.keys(colorObject).forEach(function (o) {
-                if (o == tagColor) {
+                if (o == tag) {
                     tagName = colorObject[o];
                 }
             });
@@ -326,6 +334,40 @@
             }
         });
     });
+
+    // Add buttons for the tags to the container element
+    function populateTags(container, tags) {
+        tags.forEach((tag) => {
+            // Create a button
+            const tagButton = document.createElement("button");
+            tagButton.classList.add("tagButton");
+
+            // Use tag properties to "style" the button
+            tagButton.innerHTML = tag.name;
+            tagButton.style.backgroundColor = tag.color;
+            
+            // Add listener for button click
+            tagButton.addEventListener("click", (e) => {
+                // Clear active tags
+                container.querySelectorAll("button").forEach((button) => button.classList.remove("active"));
+                // Make this tag active
+                tagButton.classList.add("active");
+                activeTag = tag;
+            });
+
+            // Append button to the container
+            container.append(tagButton);
+        });
+
+        // set the first tag active
+        container.querySelector("button").classList.add("active");
+        activeTag = tags[0];
+    }
+
+    // Randomly generate tags descriptor object
+    function getTagsDescriptor() {
+        return new CanvasTools.Core.TagsDescriptor([activeTag]);
+    };
 
     // Builds select element using provided list of images 
     function initImageSelect(images, onSelect) {

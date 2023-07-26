@@ -5,8 +5,9 @@
 // LICENSE file in the directory containing this source.
 
 // Convert the onnx model mask prediction to ImageData
-function arrayToImageData(input: any, width: number, height: number) {
-    const [r, g, b, a] = [0, 114, 189, 255]; // the masks's blue color
+function arrayToImageData(input: any, width: number, height: number, color: [number, number, number] = [0, 114, 189]) {
+    const [r, g, b] = color; // the masks's color
+    const alpha = 255;
     const arr = new Uint8ClampedArray(4 * width * height).fill(0);
     for (let i = 0; i < input.length; i++) {
   
@@ -17,7 +18,7 @@ function arrayToImageData(input: any, width: number, height: number) {
         arr[4 * i + 0] = r;
         arr[4 * i + 1] = g;
         arr[4 * i + 2] = b;
-        arr[4 * i + 3] = a;
+        arr[4 * i + 3] = alpha;
       }
     }
     return new ImageData(arr, height, width);
@@ -42,6 +43,6 @@ function arrayToImageData(input: any, width: number, height: number) {
   }
   
   // Convert the onnx model mask output to an HTMLImageElement
-  export function onnxMaskToImage(input: any, width: number, height: number) {
-    return imageDataToImage(arrayToImageData(input, width, height));
+  export function onnxMaskToImage(input: any, width: number, height: number, color?: [number, number, number]) {
+    return imageDataToImage(arrayToImageData(input, width, height, color));
   }

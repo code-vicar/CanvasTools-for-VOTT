@@ -126,7 +126,7 @@ export class MasksManager {
         this.tensor = new Tensor("float32", npArray.data, npArray.shape);
     }
 
-    public async runOnnx(click: modelInputProps): Promise<void> {
+    public async runOnnx(click: modelInputProps, tag: TagsDescriptor): Promise<void> {
         if (!this.onnxSession || !this.tensor) {
             return;
         }
@@ -148,7 +148,8 @@ export class MasksManager {
         // The predicted mask returned from the ONNX model is an array which is 
         // rendered as an HTML image using onnxMaskToImage() from maskUtils.tsx.
         this.initializeImageMask();
-        const SAMMaskImage = onnxMaskToImage(output.data, output.dims[2], output.dims[3]);
+        const [r, g, b] = tag.primary.srgbColor.to255();
+        const SAMMaskImage = onnxMaskToImage(output.data, output.dims[2], output.dims[3], [r, g, b]);
         const currentDimensionsEditor = this.getCurrentDimension();
         SAMMaskImage.onload = (_e) => {
             const newKonvaImg = new Konva.Image({
